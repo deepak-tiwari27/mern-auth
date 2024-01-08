@@ -5,6 +5,7 @@ dotenv.config()
 import userRoutes from "./routes/userRoute.js"
 import authRoutes from "./routes/user.auth.js"
 
+
 mongoose.connect(process.env.MONGO).then(()=>{
     console.log("connected to the db")
 }).catch((error)=>{
@@ -12,6 +13,7 @@ mongoose.connect(process.env.MONGO).then(()=>{
 })
 
 const app = express()
+
 app.use(express.json())
 
 app.listen(3000,()=>{
