@@ -8,6 +8,9 @@ import {
   uploadBytesResumable,
 } from "firebase/storage";
 import { app } from "../firebase";
+import {useDispatch} from "react-redux"
+import { updateUserFailure,updateUserStart,updateUserSuccess} from "../redux/user/userSlice";
+// const [updateSuccess,setUpdateSuccess] = useState(false)
 
 export default function Profile() {
   const fileRef = useRef(null);
@@ -15,9 +18,12 @@ export default function Profile() {
   const [imagePercent, setImagePercent] = useState(0);
   const [imageError, setImageError] = useState(false);
   const [formData, setFormData] = useState({});
-  console.log(formData);
+  const [updateSuccess,setUpdateSuccess] = useState(false)
 
-  const { currentUser } = useSelector((state) => state.user);
+  console.log(formData);
+  const dispatch = useDispatch()
+
+  const { currentUser,loading,error } = useSelector((state) => state.user);
   useEffect(() => {
     if (image) {
       handleFileUpload(image);
@@ -25,6 +31,7 @@ export default function Profile() {
   }, [image]);
   const handleFileUpload = async (image) => {
     try {
+
       const storage = getStorage(app);
       const fileName = new Date().getTime() + image.name;
       const storageRef = ref(storage, fileName);
@@ -86,11 +93,41 @@ export default function Profile() {
   //     }
   //   );
   // };
+  const handleChange = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.id]: e.target.value,
+    });
+  };
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      dispatch(updateUserStart())
+      const res = await fetch(`/api/user/update/${currentUser._id}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData),
+      });
+      const data = await res.json();
+      if(data.success === false){
+        dispatch(updateUserFailure(data))
+        return
+      }
+      dispatch(updateUserSuccess(data))
+      setUpdateSuccess(true)
+    } catch (error) {
+      dispatch(updateUserFailure(error))
+
+    }
+  }
+
   return (
     <div className="p-3 max-w-lg mx-auto ">
       <h1 className="text-3xl font-semibold text-center my-7">Profile</h1>
 
-      <form className="flex flex-col gap-4">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <input
           type="file"
           ref={fileRef}
@@ -104,7 +141,7 @@ export default function Profile() {
           className=" h-24 w-24 self-center cursor-pointer rounded-full object-cover mt-2"
           onClick={() => fileRef.current.click()}
         />
-        <p className ="text-sm self-center">
+        <p className="text-sm self-center">
           {imageError ? (
             <span className="bg-red-500">Error uploading image</span>
           ) : imagePercent > 0 && imagePercent < 100 ? (
@@ -121,6 +158,7 @@ export default function Profile() {
           id="username"
           placeholder="username"
           className="bg-slate-200 rounded-lg p-3 "
+          onChange={handleChange}
         />
         <input
           type="email"
@@ -128,21 +166,25 @@ export default function Profile() {
           id="email"
           placeholder="email"
           className="bg-slate-200 rounded-lg p-3 "
+          onChange={handleChange}
         />
         <input
           type="password"
           id="password"
           placeholder="password"
           className="bg-slate-200 rounded-lg p-3 "
+          onChange={handleChange}
         />
         <button className="bg-slate-700 rounded-lg p-3 text-white uppercase cursor-pointer disabled:opacity-40 hover:opacity-85">
-          update
+          {loading ? "Loading...":"update"}
         </button>
       </form>
       <div className="flex justify-between mt-4">
         <span className="text-red-700 cursor-pointer">Delete Account</span>
         <span className="text-red-700 cursor-pointer">Sign Out</span>
       </div>
+      <p className = "text-red-500 mt-5">{error && "something went wrong"}</p>
+      <p className = "text-green-500 mt-5">{updateSuccess && "user is updated"}</p>
     </div>
   );
 }
